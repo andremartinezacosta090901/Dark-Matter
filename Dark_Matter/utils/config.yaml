@@ -1,0 +1,27 @@
+Dark_Matter:
+  WorldModel:
+
+    Encoder:
+      input_channels:
+      hidden_layers:
+
+    Quantizer:
+      num_embeddings:
+      embedding_dim:
+
+    LSSM:
+      action_dim:
+      embed_dim:
+      stoch_dim:
+      discrete_dim:
+      deter_dim:
+
+    Decoder:
+      bins:
+
+    RewardHead:
+      classes:
+      bins:
+
+    ContinueHead:
+      hidden_dim:
