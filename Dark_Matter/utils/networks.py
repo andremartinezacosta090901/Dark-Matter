@@ -276,10 +276,10 @@ class VQ_VAE(nn.Module):  # WORKS perfectly
 class LSSM(nn.Module):  # Liquid State Space Model and WORKS PERFECTLY
     def __init__(self,
                  action_dim,
-                 embed_dim,
+                 embedding_dim,
                  stoch_dim=32,
                  discrete_dim=32,
-                 deter_dim=200,
+                 deter_dim=512,
                  hidden_dim=200,
                  activation='ReLU'):
         super().__init__()
@@ -311,7 +311,7 @@ class LSSM(nn.Module):  # Liquid State Space Model and WORKS PERFECTLY
         )
 
         self.post = StochasticNetwork(
-            in_channel=deter_dim + embed_dim,
+            in_channel=deter_dim + embedding_dim,
             stoch_dim=stoch_dim,
             discrete_dim=discrete_dim,
             hidden_layers=hidden_dim
@@ -334,10 +334,10 @@ class LSSM(nn.Module):  # Liquid State Space Model and WORKS PERFECTLY
         z_prior, prior_dist = self.prior(x_output)
         return z_prior, h, prior_dist
 
-    def observe_step(self, prev_h, prev_z, action, observation_embed, t=1):
+    def observe_step(self, reset, prev_h, prev_z, action, observation_embed, t=1):
         fused_input = torch.cat([action, prev_z], dim=-1)
         x = self.in_layer(fused_input)
-        x_output, h = self.glu(x, prev_h, t=t)
+        x_output, h = self.glu(reset, x, prev_h, t=t)
         _, prior_dist = self.prior(x_output)
         post_input = torch.cat([h, observation_embed], dim=-1)
         z_post, post_dist = self.post(post_input)
@@ -390,14 +390,15 @@ class RewardHead(nn.Module):  # Works perfectly
 
 class ValueHead(nn.Module):  # WORKS Perfectly
     def __init__(self,
-                 deter_dim=4096,
+                 deter_dim=512,
                  stoch_dim=32,
                  classes=32,
-                 embedding_dim=256):
+                 embedding_dim=4):
         super().__init__()
-        x_dim = deter_dim + (stoch_dim * classes)
+        self.x_dim = deter_dim + (stoch_dim * classes)
+        print(f"DEBUG: Initialisiere Critic mit combined_dim: {self.x_dim}")
         self.value_head = CFC(
-            input_size=x_dim,
+            input_size=self.x_dim,
             size=embedding_dim,
             norm=True,
             activation='ReLU',
@@ -406,10 +407,13 @@ class ValueHead(nn.Module):  # WORKS Perfectly
         self.to_value = nn.Linear(embedding_dim, 1)
 
     def forward(self, x, h, t=1):
-        h_next = self.value_head(x, h, t=t)
+        x_flat = x.flatten(start_dim=-1)
+        features = torch.cat([x_flat, h], dim=-1)
+        if features.shape[-1] != self.x_dim:
+            raise ValueError(f"SHAPE MISMATCH: Erwarte {self.x_dim}, aber kriege {features.shape[-1]}! "
+                             f"z_flat: {x_flat.shape}, h: {h.shape}")
+        h_next = self.value_head(features, h, t=t)
         value = self.to_value(h_next)
-        print("x:", x.shape)
-        print("h:", h.shape)
         return value, h_next
 
 
