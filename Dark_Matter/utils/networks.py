@@ -1,17 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import sys
 import random
 import numpy as np
-import matplotlib.pyplot as plt
 from torch.distributions import kl_divergence, OneHotCategorical
-import lpips
-import unittest
-from unittest import TestCase
-from pathlib import Path
-
-sys.path.append(str(Path(__file__).parent.parent.parent))
 from Dark_Matter.utils.utils import GLU, model_builder_layer, StochasticNetwork, CFC, symexp, symlog, \
     ExponentialMovingAverage, Sum_Tree, device
 
@@ -396,7 +388,7 @@ class ValueHead(nn.Module):  # WORKS Perfectly
                  embedding_dim=4):
         super().__init__()
         self.x_dim = deter_dim + (stoch_dim * classes)
-        print(f"DEBUG: Initialisiere Critic mit combined_dim: {self.x_dim}")
+        print(f"DEBUG: x_dim: {self.x_dim}")
         self.value_head = CFC(
             input_size=self.x_dim,
             size=embedding_dim,
@@ -410,8 +402,8 @@ class ValueHead(nn.Module):  # WORKS Perfectly
         x_flat = x.flatten(start_dim=-1)
         features = torch.cat([x_flat, h], dim=-1)
         if features.shape[-1] != self.x_dim:
-            raise ValueError(f"SHAPE MISMATCH: Erwarte {self.x_dim}, aber kriege {features.shape[-1]}! "
-                             f"z_flat: {x_flat.shape}, h: {h.shape}")
+            raise ValueError(f"SHAPE MISMATCH: x_dim: {self.x_dim}, feature: {features.shape[-1]}"
+                             f"x_flat: {x_flat.shape}, h: {h.shape}")
         h_next = self.value_head(features, h, t=t)
         value = self.to_value(h_next)
         return value, h_next
